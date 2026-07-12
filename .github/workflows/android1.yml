@@ -13,33 +13,68 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up JDK 22
+    # إعداد الـ Java
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        distribution: 'oracle'
-        java-version: '22'
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
 
-    # خطوة ذكية للبحث عن ملف gradlew والدخول إلى مجلده تلقائياً لتفادي مشكلة المجلدات الفرعية
-    - name: Change wrapper permissions
+    # توليد ملف الـ Wrapper
+    - name: Generate and Update Gradle Wrapper
       run: |
-        GRADLEW_PATH=$(find . -name gradlew -print -quit)
-        if [ -z "$GRADLEW_PATH" ]; then
-          echo "Error: gradlew not found anywhere in the repository!"
-          exit 1
+        SETTINGS_PATH=$(find . -name "settings.gradle*" -print -quit)
+        if [ -z "$SETTINGS_PATH" ]; then
+          APP_PATH=$(find . -name "app" -type d -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            TARGET_DIR="."
+          else
+            TARGET_DIR=$(dirname "$APP_PATH")
+          fi
+        else
+          TARGET_DIR=$(dirname "$SETTINGS_PATH")
         fi
-        GRADLE_DIR=$(dirname "$GRADLEW_PATH")
-        cd "$GRADLE_DIR"
+        
+        cd "$TARGET_DIR"
+        gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # بناء التطبيق من داخل المجلد الصحيح
+    # خطوة حقن وحل مشكلة دمج الـ Manifest والـ AndroidX تلقائياً
+    - name: Patch Manifest and Gradle Properties
+      run: |
+        GRADLEW_PATH=$(find . -name gradlew -print -quit)
+        PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
+        cd "$PROJECT_ROOT"
+        
+        # تفعيل خصائص أندرويد إكس والذاكرة
+        echo "android.useAndroidX=true" >> gradle.properties
+        echo "android.enableJetifier=true" >> gradle.properties
+        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
+
+        # البحث عن ملف المانيفست وتعديله لحل مشكلة تعارض ARCore
+        MANIFEST_PATH=$(find . -name "AndroidManifest.xml" -print -quit)
+        if [ -f "$MANIFEST_PATH" ]; then
+          echo "Patching AndroidManifest.xml at: $MANIFEST_PATH"
+          
+          # إضافة تعريف أدوات أندرويد (tools) للمانيفست إن لم يكن موجوداً
+          sed -i 's|<manifest|<manifest xmlns:tools="http://schemas.android.com/tools"|g' "$MANIFEST_PATH"
+          # إزالة تكرار السطر البرمجي المسبب للتعارض إن حدث
+          sed -i 's|xmlns:tools="http://schemas.android.com/tools" xmlns:tools="http://schemas.android.com/tools"|xmlns:tools="http://schemas.android.com/tools"|g' "$MANIFEST_PATH"
+          
+          # استبدال سطر الـ meta-data المتعارض وإضافة أمر التخطي tools:replace
+          sed -i 's|android:name="com.google.ar.core"|android:name="com.google.ar.core" tools:replace="android:value"|g' "$MANIFEST_PATH"
+        fi
+
+    # بدء بناء التطبيق
     - name: Build Debug APK
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         GRADLE_DIR=$(dirname "$GRADLEW_PATH")
         cd "$GRADLE_DIR"
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug --no-daemon
 
-    # رفع ملف الـ APK بعد العثور عليه في مجلدات المخرجات
+    # رفع ملف الـ APK المستخرج
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
