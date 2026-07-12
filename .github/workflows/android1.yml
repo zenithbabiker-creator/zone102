@@ -40,7 +40,7 @@ jobs:
         gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # تعديل الخصائص، المانيفست، حقن الاعتماديات، وبناء الأيقونة نصياً بشكل مباشر وآمن
+    # تعديل الخصائص، المانيفست، وبناء الأيقونة، وحقن الاعتماديات متوافقة مع Kotlin DSL
     - name: Patch Manifest, Resources, Dependencies and Gradle Properties
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
@@ -61,14 +61,13 @@ jobs:
           sed -i 's|android:name="com.google.ar.core"|android:name="com.google.ar.core" tools:replace="android:value"|g' "$MANIFEST_PATH"
         fi
 
-        # 3. توليد الأيقونة المخصصة (ZONE + الوردة) بشكل سطري آمن لتفادي مشاكل الـ XML والـ Base64
+        # 3. توليد الأيقونة المخصصة (ZONE + الوردة)
         RES_DIR=$(find . -type d -name "res" | grep "src/main/res" -m 1)
         if [ -d "$RES_DIR" ]; then
           echo "Found res directory at: $RES_DIR"
           mkdir -p "$RES_DIR/mipmap-hdpi"
           ICON_FILE="$RES_DIR/mipmap-hdpi/ic_launcher.xml"
           
-          # بناء الملف سطر بسطر بأوامر echo صريحة
           echo '<?xml version="1.0" encoding="utf-8"?>' > "$ICON_FILE"
           echo '<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">' >> "$ICON_FILE"
           echo '  <path android:fillColor="#00695C" android:pathData="M0,0h108v108h-108z"/>' >> "$ICON_FILE"
@@ -85,13 +84,13 @@ jobs:
           echo "Custom ZONE Icon patched successfully."
         fi
 
-        # 4. حقن وتحديث مكتبات ومستودعات البناء لحل أخطاء الأكواد الناقصة تلقائياً
-        APP_GRADLE=$(find . -name "build.gradle" -o -name "build.gradle.kts" | grep "app/build.gradle" -m 1)
+        # 4. حقن الاعتماديات بالصيغة المتوافقة تماماً مع Kotlin DSL (استخدام الأقواس)
+        APP_GRADLE=$(find . -name "build.gradle.kts" | grep "app/build.gradle.kts" -m 1)
         if [ -f "$APP_GRADLE" ]; then
-          echo "Injecting missing AR and Material3 Compose libraries inside: $APP_GRADLE"
-          sed -i '/dependencies {/a \    implementation "io.github.sceneview:arsceneview:2.2.1"' "$APP_GRADLE"
-          sed -i '/dependencies {/a \    implementation "androidx.compose.material3:material3:1.2.1"' "$APP_GRADLE"
-          sed -i '/dependencies {/a \    implementation "androidx.compose.material:material:1.6.8"' "$APP_GRADLE"
+          echo "Injecting missing libraries inside Kotlin DSL build file: $APP_GRADLE"
+          sed -i '/dependencies {/a \    implementation("io.github.sceneview:arsceneview:2.2.1")' "$APP_GRADLE"
+          sed -i '/dependencies {/a \    implementation("androidx.compose.material3:material3:1.2.1")' "$APP_GRADLE"
+          sed -i '/dependencies {/a \    implementation("androidx.compose.material:material:1.6.8")' "$APP_GRADLE"
         fi
 
     # بدء بناء التطبيق
