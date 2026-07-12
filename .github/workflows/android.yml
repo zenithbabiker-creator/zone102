@@ -13,7 +13,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # استخدام إصدار JDK 17 المستقر جداً مع مكتبات المطور الحالية
+    # إعداد الـ Java 17 المتوافق مع Gradle 8.7
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
@@ -21,7 +21,7 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    # توليد ملف الـ Wrapper وتحديث نسخة Gradle للتوافق مع جافا 17 والمكتبات الحديثة
+    # توليد ملف الـ Wrapper مع رفع النسخة إلى 8.7 إجبارياً كما طلب الخطأ
     - name: Generate and Update Gradle Wrapper
       run: |
         SETTINGS_PATH=$(find . -name "settings.gradle*" -print -quit)
@@ -37,25 +37,23 @@ jobs:
         fi
         
         cd "$TARGET_DIR"
-        gradle wrapper --gradle-version 8.4 --distribution-type all
+        # تم التعديل هنا إلى النسخة المطلوبة 8.7
+        gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # خطوة ذكية لإجبار ملفات المشروع على تخطي تعارضات مكتبات Compose برمجياً
-    - name: Patch Gradle Enterprise & Compose Compiler
+    # إعداد ملف الخصائص لتفادي أي تعارض في الذاكرة
+    - name: Patch Gradle Properties
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
         cd "$PROJECT_ROOT"
-        
-        # تعطيل أي فحص صارم للتحذيرات قد يعطل بناء السيرفر
         if [ -f "gradle.properties" ]; then
-          echo "android.jetbrains.kotlin.compiler.liveLiteral=false" >> gradle.properties
           echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
         else
-          echo -e "android.jetbrains.kotlin.compiler.liveLiteral=false\norg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" > gradle.properties
+          echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" > gradle.properties
         fi
 
-    # بناء التطبيق مع تصفية الأسطر لإظهار موضع الخطأ المباشر فقط إن وجد
+    # بدء بناء التطبيق
     - name: Build Debug APK
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
@@ -63,6 +61,7 @@ jobs:
         cd "$GRADLE_DIR"
         ./gradlew assembleDebug --no-daemon
 
+    # رفع ملف الـ APK المستخرج
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
