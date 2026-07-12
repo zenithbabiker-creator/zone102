@@ -13,21 +13,49 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # تم التحديث هنا إلى إصدار Java 22 لضمان التوافق مع المكتبات الحديثة
     - name: Set up JDK 22
       uses: actions/setup-java@v4
       with:
-        distribution: 'oracle' # توزيعة أوراكل الرسمية تدعم الإصدارات الحديثة بشكل ممتاز
+        distribution: 'oracle'
         java-version: '22'
 
-    - name: Change wrapper permissions
-      run: chmod +x gradlew
+    # خطوة توليد ملفات Gradle الناقصة وتحديثها تلقائياً داخل الخادم
+    - name: Generate Missing Gradle Wrapper
+      run: |
+        # البحث عن المجلد البرمجي الذي يحتوي على ملفات الإعدادات
+        SETTINGS_PATH=$(find . -name "settings.gradle*" -print -quit)
+        if [ -z "$SETTINGS_PATH" ]; then
+          # إذا لم يجد حتى ملف settings، سيبحث عن مجلد app ويبني بجانبه
+          APP_PATH=$(find . -name "app" -type d -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            TARGET_DIR="."
+          else
+            TARGET_DIR=$(dirname "$APP_PATH")
+          fi
+        else
+          TARGET_DIR=$(dirname "$SETTINGS_PATH")
+        fi
+        
+        cd "$TARGET_DIR"
+        echo "Found project root directory at: $TARGET_DIR"
+        
+        # تحميل وتوليد ملف gradlew الناقص متوافق مع الحزم الحديثة
+        gradle wrapper --gradle-version 8.7
+        
+        # إعطاء صلاحية التشغيل للملف المولد
+        chmod +x gradlew
 
+    # بناء التطبيق بعد توليد الملفات بنجاح
     - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      run: |
+        GRADLEW_PATH=$(find . -name gradlew -print -quit)
+        GRADLE_DIR=$(dirname "$GRADLEW_PATH")
+        cd "$GRADLE_DIR"
+        ./gradlew assembleDebug
 
+    # رفع ملف الـ APK المستخرج
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: my-android-app-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: "**/build/outputs/apk/debug/app-debug.apk"
