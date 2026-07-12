@@ -13,19 +13,19 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # إعداد الـ Java وإجبار النظام على اعتماد إعدادات التوافق
     - name: Set up JDK 22
       uses: actions/setup-java@v4
       with:
         distribution: 'oracle'
         java-version: '22'
+        cache: 'gradle' # لتسريع البناء وتجنب تعارض الملفات المؤقتة
 
-    # خطوة توليد ملفات Gradle الناقصة وتحديثها تلقائياً داخل الخادم
+    # توليد ملف الـ Wrapper الناقص
     - name: Generate Missing Gradle Wrapper
       run: |
-        # البحث عن المجلد البرمجي الذي يحتوي على ملفات الإعدادات
         SETTINGS_PATH=$(find . -name "settings.gradle*" -print -quit)
         if [ -z "$SETTINGS_PATH" ]; then
-          # إذا لم يجد حتى ملف settings، سيبحث عن مجلد app ويبني بجانبه
           APP_PATH=$(find . -name "app" -type d -print -quit)
           if [ -z "$APP_PATH" ]; then
             TARGET_DIR="."
@@ -37,23 +37,19 @@ jobs:
         fi
         
         cd "$TARGET_DIR"
-        echo "Found project root directory at: $TARGET_DIR"
-        
-        # تحميل وتوليد ملف gradlew الناقص متوافق مع الحزم الحديثة
         gradle wrapper --gradle-version 8.7
-        
-        # إعطاء صلاحية التشغيل للملف المولد
         chmod +x gradlew
 
-    # بناء التطبيق بعد توليد الملفات بنجاح
+    # بناء التطبيق مع إضافة أوامر التخطي (Options) لضمان عدم توقف البناء بسبب التحذيرات
     - name: Build Debug APK
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         GRADLE_DIR=$(dirname "$GRADLEW_PATH")
         cd "$GRADLE_DIR"
-        ./gradlew assembleDebug
+        # خيارات إضافية لتخطي مشاكل الذاكرة والتعارضات الناتجة عن اختلاف الإصدارات
+        ./gradlew assembleDebug -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8" --no-daemon
 
-    # رفع ملف الـ APK المستخرج
+    # رفع ملف الـ APK النهائي
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
