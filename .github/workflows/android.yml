@@ -21,7 +21,7 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    # توليد ملف الـ Wrapper مع النسخة المتوافقة 8.7
+    # توليد ملف الـ Wrapper بالنسخة المتوافقة 8.7
     - name: Generate and Update Gradle Wrapper
       run: |
         SETTINGS_PATH=$(find . -name "settings.gradle*" -print -quit)
@@ -40,17 +40,49 @@ jobs:
         gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # إجبار الخادم على تفعيل AndroidX وإعدادات الذاكرة لحل المشكلة الحالية
-    - name: Patch Gradle Properties (Enable AndroidX)
+    # تعديل خصائص أندرويد وإصلاح تعارض الـ Manifest تلقائياً
+    - name: Patch Manifest and Gradle Properties
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
         cd "$PROJECT_ROOT"
         
-        # تفعيل الخصائص المطلوبة لحل الخطأ
+        # تفعيل خصائص أندرويد إكس والذاكرة
         echo "android.useAndroidX=true" >> gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
         echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
+
+        # البحث عن ملف المانيفست وتعديله برمجياً بدقة سطر بسطر
+        MANIFEST_PATH=$(find . -name "AndroidManifest.xml" -print -quit)
+        if [ -f "$MANIFEST_PATH" ]; then
+          echo "Patching AndroidManifest.xml at: $MANIFEST_PATH"
+          python3 -c "
+with open('$MANIFEST_PATH', 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+
+new_lines = []
+manifest_patched = False
+
+for line in lines:
+    # 1. إضافة فضاء الأسماء tools إلى وسم manifest الرئيسي
+    if '<manifest' in line and 'xmlns:tools' not in line:
+        line = line.replace('<manifest', '<manifest xmlns:tools=\"http://schemas.android.com/tools\"')
+    
+    # 2. البحث عن سطر AR Core وحقن خاصية الـ replace بالداخل مباشرة
+    if 'com.google.ar.core' in line and 'tools:replace' not in line:
+        line = line.replace('android:name=\"com.google.ar.core\"', 'android:name=\"com.google.ar.core\" tools:replace=\"android:value\"')
+        manifest_patched = True
+        print('Successfully patched AR Core meta-data line.')
+        
+    new_lines.append(line)
+
+with open('$MANIFEST_PATH', 'w', encoding='utf-8') as f:
+    f.writelines(new_lines)
+
+if not manifest_patched:
+    print('Warning: Enhanced line-patcher could not modify the targeted line.')
+"
+        fi
 
     # بدء بناء التطبيق
     - name: Build Debug APK
