@@ -1,0 +1,47 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 22
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'oracle'
+        java-version: '22'
+
+    # خطوة ذكية للبحث عن ملف gradlew والدخول إلى مجلده تلقائياً لتفادي مشكلة المجلدات الفرعية
+    - name: Change wrapper permissions
+      run: |
+        GRADLEW_PATH=$(find . -name gradlew -print -quit)
+        if [ -z "$GRADLEW_PATH" ]; then
+          echo "Error: gradlew not found anywhere in the repository!"
+          exit 1
+        fi
+        GRADLE_DIR=$(dirname "$GRADLEW_PATH")
+        cd "$GRADLE_DIR"
+        chmod +x gradlew
+
+    # بناء التطبيق من داخل المجلد الصحيح
+    - name: Build Debug APK
+      run: |
+        GRADLEW_PATH=$(find . -name gradlew -print -quit)
+        GRADLE_DIR=$(dirname "$GRADLEW_PATH")
+        cd "$GRADLE_DIR"
+        ./gradlew assembleDebug
+
+    # رفع ملف الـ APK بعد العثور عليه في مجلدات المخرجات
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: my-android-app-apk
+        path: "**/build/outputs/apk/debug/app-debug.apk"
