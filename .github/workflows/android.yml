@@ -13,7 +13,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # إعداد الـ Java 17 المتوافق مع Gradle 8.7
+    # إعداد الـ Java
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
@@ -21,7 +21,7 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    # توليد ملف الـ Wrapper مع رفع النسخة إلى 8.7 إجبارياً كما طلب الخطأ
+    # توليد ملف الـ Wrapper مع النسخة المتوافقة 8.7
     - name: Generate and Update Gradle Wrapper
       run: |
         SETTINGS_PATH=$(find . -name "settings.gradle*" -print -quit)
@@ -37,21 +37,20 @@ jobs:
         fi
         
         cd "$TARGET_DIR"
-        # تم التعديل هنا إلى النسخة المطلوبة 8.7
         gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # إعداد ملف الخصائص لتفادي أي تعارض في الذاكرة
-    - name: Patch Gradle Properties
+    # إجبار الخادم على تفعيل AndroidX وإعدادات الذاكرة لحل المشكلة الحالية
+    - name: Patch Gradle Properties (Enable AndroidX)
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
         cd "$PROJECT_ROOT"
-        if [ -f "gradle.properties" ]; then
-          echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
-        else
-          echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" > gradle.properties
-        fi
+        
+        # تفعيل الخصائص المطلوبة لحل الخطأ
+        echo "android.useAndroidX=true" >> gradle.properties
+        echo "android.enableJetifier=true" >> gradle.properties
+        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
 
     # بدء بناء التطبيق
     - name: Build Debug APK
