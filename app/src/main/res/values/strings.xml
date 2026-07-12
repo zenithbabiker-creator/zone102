@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">تصميم الحدائق</string>
+
+    <!-- Step 1 -->
+    <string name="step1_title">الخطوة ١: مسح المساحة</string>
+    <string name="mode_live">وضع التتبع المباشر</string>
+    <string name="mode_photo">وضع مراجعة الصورة</string>
+    <string name="btn_capture">تجميد الصورة</string>
+    <string name="btn_live_reset">مباشر / إعادة ضبط</string>
+    <string name="btn_clear_points">مسح النقاط</string>
+    <string name="btn_confirm_area">تأكيد المساحة والمتابعة</string>
+    <string name="area_label">مساحة الحديقة: %1$.2f م²</string>
+    <string name="scanning_hint">يرجى تحريك الجهاز ببطء لاكتشاف الأرضية…</string>
+    <string name="plane_locked_hint">تم تحديد الأرضية، يمكنك الآن النقر لتحديد الحدود</string>
+    <string name="ar_not_supported">هذا الجهاز لا يدعم تقنية الواقع المعزز (ARCore)</string>
+
+    <!-- Step 2 -->
+    <string name="step2_title">الخطوة ٢: حساب كمية التراب</string>
+    <string name="reference_area_label">مساحة الحديقة: %1$.2f م²</string>
+    <string name="thickness_dropdown_label">اختر سماكة الردم (سم)</string>
+    <string name="soil_volume_label">كمية التراب المطلوبة للردم: %1$.2f متر مكعب</string>
+    <string name="btn_back">رجوع</string>
+    <string name="btn_next_step">تأكيد والمتابعة للخطوة التالية</string>
+
+    <!-- Step 3 -->
+    <string name="step3_title">الخطوة ٣: استوديو التصميم</string>
+    <string name="tool_arc">قوس</string>
+    <string name="tool_circle">دائرة</string>
+    <string name="tool_polygon">شكل مخصص</string>
+    <string name="tool_eraser">أداة الممحاة</string>
+    <string name="plant_menu_title">اختيار النباتات</string>
+    <string name="plant_no_thorn">اللاشوكة</string>
+    <string name="plant_royal_palm">رويال بالم</string>
+    <string name="plant_duranta">دورنتا</string>
+    <string name="radius_dialog_title">أدخل نصف القطر بالمتر</string>
+    <string name="radius_input_label">نصف القطر (م)</string>
+    <string name="btn_ok">موافق</string>
+    <string name="btn_cancel">إلغاء</string>
+    <string name="hedge_fill_action">تعبئة المحيط بنبات الدورنتا (تحوّط)</string>
+    <string name="undo">تراجع</string>
+    <string name="redo">إعادة</string>
+    <string name="summary_plants_added">النباتات المضافة: %1$d رويال بالم، %2$d لاشوكة</string>
+    <string name="btn_save_generate">حفظ وإنشاء العرض النهائي</string>
+
+    <!-- Borders -->
+    <string name="borders_section_title">محددات الحديقة</string>
+    <string name="border_large">محدد كبير (٣٠ سم)</string>
+    <string name="border_medium">محدد متوسط (٢٠ سم)</string>
+    <string name="border_small">محدد صغير (١٠ سم)</string>
+    <string name="border_plant_suggestion_large">فايكس</string>
+    <string name="border_plant_suggestion_medium">دورنتا</string>
+    <string name="border_plant_suggestion_small">سدرة دح</string>
+    <string name="plant_name_field_hint">اسم النبات (اختياري - اتركه فارغاً لمحدد إنشائي)</string>
+    <string name="density_per_meter_label">عدد النباتات في المتر الطولي</string>
+    <string name="trees_per_meter_label">عدد الأشجار في المتر الواحد</string>
+    <string name="structural_border_flag">محدد إنشائي (بدون نباتات)</string>
+    <string name="border_summary_planted">%1$s (%2$s): مطلوب %3$d نبتة</string>
+    <string name="border_summary_structural">%1$s: %2$.2f متر (إنشائي بدون نباتات)</string>
+
+    <!-- Step 4 -->
+    <string name="step4_title">الخطوة ٤: النجيلة والمساحة الصافية</string>
+    <string name="lawn_density_label">كثافة شتلات النجيلة في المتر المربع</string>
+    <string name="net_lawn_area_label">مساحة النجيلة الصافية: %1$.2f م²</string>
+    <string name="total_lawn_plants_label">إجمالي شتلات النجيلة المطلوبة: %1$d شتلة</string>
+
+    <!-- Step 5 / Report -->
+    <string name="step5_title">الخطوة ٥: التقرير النهائي</string>
+    <string name="btn_copy_report">نسخ التقرير</string>
+    <string name="btn_save_design">حفظ بيانات التصميم</string>
+    <string name="report_copied_toast">تم نسخ التقرير بنجاح</string>
+    <string name="design_saved_toast">تم حفظ بيانات التصميم</string>
+</resources>

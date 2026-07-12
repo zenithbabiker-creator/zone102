@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme used by MainActivity. Actual Material3 color
+         scheme (green/soil palette) is applied in Compose via
+         ui/theme/Theme.kt (LandscapeDesignTheme); this XML theme only
+         controls the pre-Compose window background / status bar. -->
+    <style name="Theme.LandscapeDesign" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#2E7D32</item>
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+    </style>
+</resources>
