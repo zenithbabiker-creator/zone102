@@ -40,17 +40,17 @@ jobs:
         gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # تعديل الخصائص وحقن المانيفست وتوليد الأيقونة بأمان
-    - name: Patch Manifest, Resources and Gradle Properties
+    # تعديل الخصائص، حقن المانيفست، بناء الأيقونة، وإصلاح اعتماديات الكود المفقودة
+    - name: Patch Manifest, Resources, Dependencies and Gradle Properties
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
         cd "$PROJECT_ROOT"
         
-        # 1. تفعيل خصائص أندرويد إكس وإعدادات الذاكرة
-        echo "android.useAndroidX=true" >> gradle.properties
+        # 1. تفعيل خصائص أندرويد إكس والـ Jetifier وإعدادات الذاكرة القصوى لضمان الربط
+        echo "android.useAndroidX=true" > gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
-        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
+        echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m" >> gradle.properties
 
         # 2. تعديل ملف المانيفست لحل مشكلة تعارض ARCore
         MANIFEST_PATH=$(find . -name "AndroidManifest.xml" -print -quit)
@@ -61,18 +61,22 @@ jobs:
           sed -i 's|android:name="com.google.ar.core"|android:name="com.google.ar.core" tools:replace="android:value"|g' "$MANIFEST_PATH"
         fi
 
-        # 3. توليد الأيقونة المخصصة (ZONE + الوردة) مشفرة لحل أخطاء الـ XML في جيتهاب
+        # 3. توليد الأيقونة المخصصة المفقودة (ZONE + الوردة) الآمنة التشفير
         RES_DIR=$(find . -type d -name "res" | grep "src/main/res" -m 1)
         if [ -d "$RES_DIR" ]; then
           echo "Found res directory at: $RES_DIR"
           mkdir -p "$RES_DIR/mipmap-hdpi"
-          
-          # فك تشفير النص وتوليد ملف ic_launcher.xml بشكل آمن 100% بدون اعتراض من جيتهاب
-          echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHZlY3RvciB4bWxuczphbmRyb2lkPSJodHRwOi8vc2NoZW1hcy5hbmRyb2lkLmNvbS9hcGsvcmVzL2FuZHJvaWQiCiAgICBhbmRyb2lkOndpZHRoPSIxMDhkcCIKICAgIGFuZHJvaWQ6aGVpZ2h0PSIxMDhkcCIKICAgIGFuZHJvaWQ6dmlld3BvcnRXaWR0aD0iMTA4IgogICAgYW5kcm9pZDp2aWV3cG9ydEhlaWdodD0iMTA4Ij4KICAgIDxwYXRoCiAgICAgICAgYW5kcm9pZDpmaWxsQ29sb3I9IiMwMDY5NUMiCiAgICAgICAgYW5kcm9pZDpwYXRoRGF0YT0iTTAsMGgxMDh2MTA4aC0xMDh6Ii8+CiAgICA8cGF0aAogICAgICAgIGFuZHJvaWQ6ZmlsbENvbG9yPSIjRkYyQTZEIgogICAgICAgIGFuZHJvaWQ6cGF0aERhdGE9Ik01NCwyMiBDNDgsMjIgNDYsMjggNTQsMzQgQzYyLDI4IDYwLDIyIDU0LDIyIFogTTU0LDM0IEM0OCwzNCA0MiwzOCA0OCw0NCBDNTQsNTAgNjAsNDQgNTQsMzQgWiBNNTQsMzQgQzYwLDM0IDY2LDM4IDYwLDQ0IEM1NCw1MCA0OCw0NCA1NCwzNCBaIE01NCwyMiBDNjAsMjIgNjYsMjYgNjAsMzIgQzU0LDM4IDQ4LDMyIDU0LDIyIFoiLz4KICAgIDxwYXRoCiAgICAgICAgYW5kcm9pZDpmaWxsQ29sb3I9IiNGRkQ2MDAiCiAgICAgICAgYW5kcm9pZDpwYXRoRGF0YT0iTTU0LDM0bS0zLDBhMywzIDAsMSAxLDYgMGEzLDMgMCwxIDEsLTYgMCIvPgogICAgPHBhdGgKICAgICAgICBhbmRyb2lkOmZpbGxDb2xvcj0iIzAwRTY3NiIKICAgICAgICBhbmRyb2lkOnBhdGhEYXRhPSJNNTMsMzdoMnYxMGgtMnoiLz4KICAgIDxncm91cCBhbmRyb2lkOnRyYW5zbGF0ZVg9IjI0IiBhbmRyb2lkOnRyYW5zbGF0ZVk9IjU2Ij4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTAsMCBoMTIgdjIgbC0xMCwxMCBoMTAgdjIgaC0xMiB2LTIgbDEwLC0xMCBoLTEwIHoiLz4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTE2LDAgaDEwIHYxNCBoLTEwIHogTTE4LDIgaDYgdjEwIGgtNiB6Ii8+CiAgICAgICAgPHBhdGggYW5kcm9pZDpmaWxsQ29sb3I9IiNGRkZGRkYiIGFuZHJvaWQ6cGF0aERhdGE9Ik0zMCwwIGgyIGw4LDExIHYtMTEgaDJ2MTQgaC0yIGwtOCwtMTEgdi0xMSB2MTEgaC0yIHoiLz4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTQ2LDAgaDEyIHYyIGgtMTAgdjQgaDggdjIgaC04IHY0IGgxMCB2MiBoLTEyIHoiLz4KICAgIDwvZ3JvdXA+CjwvdmVjdG9yPg==" | base64 -d > "$RES_DIR/mipmap-hdpi/ic_launcher.xml"
-          
-          echo "Custom Base64 ZONE + Flower icon generated successfully."
-        else
-          echo "Warning: res directory not found!"
+          echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHZlY3RvciB4bWxuczphbmRyb2lkPSJodHRwOi8vc2NoZW1hcy5hbmRyb2lkLmNvbS9hcGsvcmVzL2FuZHJvaWQiCiAgICBhbmRyb2lkOndpZHRoPSIxMDhkcCIKICAgIGFuZHJvaWQ6aGVpZ2h0PSIxMDhkcCIKICAgIGFuZHJvaWQ6dmlld3BvcnRXaWR0aD0iMTA4IgogICAgYW5kcm9pZDp2aWV3cG9ydEhlaWdodD0iMTA4Ij4KICAgIDxwYXRoCiAgICAgICAgYW5kcm9pZDpmaWxsQ29sb3I9IiMwMDY5NUMiCiAgICAgICAgYW5kcm9pZDpwYXRoRGF0YT0iTTAsMGgxMDh2MTA4aC0xMDh6Ii8+CiAgICA8cGF0aAogICAgICAgIGFuZHJvaWQ6ZmlsbENvbG9yPSIjRkYyQTZEIgogICAgICAgIGFuZHJvaWQ6cGF0aERhdGE9Ik01NCwyMiBDNDgsMjIgNDYsMjggNTQsMzQgQzYyLDI4IDYwLDIyIDU0LDIyIFogTTU0LDM0IEM0OCwzNCA0MiwzOCA0OCw0NCBDNTQsNTAgNjAsNDQgNTQsMzQgWiBNNTQsMzQgQzYwLDM0IDY2LDM4IDYwLDQ0IEM5NCw1MCA0OCw0NCA1NCwzNCBaIE01NCwyMiBDNjAsMjIgNjYsMjYgNjAsMzIgQzU0LDM4IDQ4LDMyIDU0LDIyIFoiLz4KICAgIDxwYXRoCiAgICAgICAgYW5kcm9pZDpmaWxsQ29sb3I9IiNGRkQ2MDAiCiAgICAgICAgYW5kcm9pZDpwYXRoRGF0YT0iTTU0LDM0bS0zLDBhMywzIDAsMSAxLDYgMGEzLDMgMCwxIDEsLTYgMCIvPgogICAgPHBhdGgKICAgICAgICBhbmRyb2lkOmZpbGxDb2xvcj0iIzAwRTY3NiIKICAgICAgICBhbmRyb2lkOnBhdGhEYXRhPSJNNTMsMzdoMnYxMGgtMnoiLz4KICAgIDxncm91cCBhbmRyb2lkOnRyYW5zbGF0ZVg9IjI0IiBhbmRyb2lkOnRyYW5zbGF0ZVk9IjU2Ij4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTAsMCBoMTIgdjIgbC0xMCwxMCBoMTAgdjIgaC0xMiB2LTIgbDEwLC0xMCBoLTEwIHoiLz4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTE2LDAgaDEwIHYxNCBoLTEwIHogTTE4LDIgaDYgdjEwIGgtNiB6Ii8+CiAgICAgICAgPHBhdGggYW5kcm9pZDpmaWxsQ29sb3I9IiNGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTMwLDAgaDIgbC8LDExIHYtMTEgaDJ2MTQgaC0yIGwtOCwtMTEgdi0xMSB2MTEgaC0yIHoiLz4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTQ2LDAgaDEyIHYyIGgtMTAgdjQgaDggdjIgaC04IHY0IGgxMCB2MiBoLTEyIHoiLz4KICAgIDwvZ3JvdXA+CjwvdmVjdG9yPg==" | base64 -d > "$RES_DIR/mipmap-hdpi/ic_launcher.xml"
+        fi
+
+        # 4. حقن وتحديث مكتبات ومستودعات البناء لحل أخطاء الأكواد الناقصة تلقائياً
+        APP_GRADLE=$(find . -name "build.gradle" -o -name "build.gradle.kts" | grep "app/build.gradle" -m 1)
+        if [ -f "$APP_GRADLE" ]; then
+          echo "Injecting missing AR and Material3 Compose libraries inside: $APP_GRADLE"
+          # التأكد من احتواء ملف البناء على مكتبة الماتيريال والواقع المعزز المطلوبة للـ Compile
+          sed -i '/dependencies {/a \    implementation "io.github.sceneview:arsceneview:2.2.1"' "$APP_GRADLE"
+          sed -i '/dependencies {/a \    implementation "androidx.compose.material3:material3:1.2.1"' "$APP_GRADLE"
+          sed -i '/dependencies {/a \    implementation "androidx.compose.material:material:1.6.8"' "$APP_GRADLE"
         fi
 
     # بدء بناء التطبيق
@@ -83,7 +87,7 @@ jobs:
         cd "$GRADLE_DIR"
         ./gradlew assembleDebug --no-daemon
 
-    # رفع ملف الـ APK المستخرج جاهزاً للتحميل
+    # رفع ملف الـ APK المستخرج جاهزاً للتحميل مباشرة
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
