@@ -40,32 +40,79 @@ jobs:
         gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # تعديل الخصائص وحقن المانيفست بأوامر Bash نصية بسيطة لتفادي أخطاء الـ Import
-    - name: Patch Manifest and Gradle Properties
+    # تعديل الخصائص وحقن المانيفست وتوليد الأيقونة المخصصة (زون + وردة)
+    - name: Patch Manifest, Resources and Gradle Properties
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
         cd "$PROJECT_ROOT"
         
-        # تفعيل خصائص أندرويد إكس وإعدادات الذاكرة
+        # 1. تفعيل خصائص أندرويد إكس وإعدادات الذاكرة
         echo "android.useAndroidX=true" >> gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
         echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
 
-        # تحديد ملف المانيفست وتعديله نصياً بشكل مباشر وقاطع
+        # 2. تعديل ملف المانيفست لحل مشكلة تعارض ARCore
         MANIFEST_PATH=$(find . -name "AndroidManifest.xml" -print -quit)
         if [ -f "$MANIFEST_PATH" ]; then
-          echo "Patching AndroidManifest.xml at: $MANIFEST_PATH"
-          
-          # 1. إضافة فضاء الأسماء tools داخل وسم manifest الرئيسي إذا لم يكن موجوداً
+          echo "Patching AndroidManifest.xml"
           sed -i 's|<manifest|<manifest xmlns:tools="http://schemas.android.com/tools"|g' "$MANIFEST_PATH"
-          # تنظيف أي تكرار قد يحدث لـ xmlns:tools
           sed -i 's|xmlns:tools="http://schemas.android.com/tools" xmlns:tools="http://schemas.android.com/tools"|xmlns:tools="http://schemas.android.com/tools"|g' "$MANIFEST_PATH"
-          
-          # 2. استبدال سطر الميتا داتا الخاص بالواقع المعزز وحقن خاصية التخطّي الإجبارية
           sed -i 's|android:name="com.google.ar.core"|android:name="com.google.ar.core" tools:replace="android:value"|g' "$MANIFEST_PATH"
+        fi
+
+        # 3. توليد الأيقونة المخصصة برسمة الوردة ونص ZONE
+        RES_DIR=$(find . -type d -name "res" | grep "src/main/res" -m 1)
+        if [ -d "$RES_DIR" ]; then
+          echo "Found res directory at: $RES_DIR"
+          mkdir -p "$RES_DIR/mipmap-hdpi"
           
-          echo "Manifest patching completed using sed."
+          # إنشاء الأيقونة كملف رسومي Vector يحتوي على الوردة والنص
+          cat << 'EOF' > "$RES_DIR/mipmap-hdpi/ic_launcher.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- الخلفية: لون تركواز داكن فخم -->
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M0,0h108v108h-108z"/>
+        
+    <!-- رسمة الوردة (البتلات باللون الأحمر الوردي) -->
+    <path
+        android:fillColor="#FF2A6D"
+        android:pathData="M54,22 C48,22 46,28 54,34 C62,28 60,22 54,22 Z M54,34 C48,34 42,38 48,44 C54,50 60,44 54,34 Z M54,34 C60,34 66,38 60,44 C54,50 48,44 54,34 Z M54,22 C60,22 66,26 60,32 C54,38 48,32 54,22 Z"/>
+        
+    <!-- قلب الوردة (باللون الأصفر) -->
+    <path
+        android:fillColor="#FFD600"
+        android:pathData="M54,34m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"/>
+        
+    <!-- غصن الوردة الصغير (باللون الأخضر) -->
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M53,37h2v10h-2z"/>
+
+    <!-- نص كلمة ZONE في منتصف الأيقونة باللون الأبيض الثلجي -->
+    <!-- تم تمثيل الحروف بمسارات رسم هندسية دقيقة لتظهر على كل الهواتف -->
+    <group android:translateX="24" android:translateY="56">
+        <!-- حرف Z -->
+        <path android:fillColor="#FFFFFF" android:pathData="M0,0 h12 v2 l-10,10 h10 v2 h-12 v-2 l10,-10 h-10 z"/>
+        <!-- حرف O -->
+        <path android:fillColor="#FFFFFF" android:pathData="M16,0 h10 v14 h-10 z M18,2 h6 v10 h-6 z"/>
+        <!-- حرف N -->
+        <path android:fillColor="#FFFFFF" android:pathData="M30,0 h2 l8,11 v-11 h2 v14 h-2 l-8,-11 v-11 v11 h-2 z"/>
+        <!-- حرف E -->
+        <path android:fillColor="#FFFFFF" android:pathData="M46,0 h12 v2 h-10 v4 h8 v2 h-8 v4 h10 v2 h-12 z"/>
+    </group>
+</vector>
+EOF
+          echo "Custom ZONE + Flower icon generated successfully."
+        else
+          echo "Warning: res directory not found!"
         fi
 
     # بدء بناء التطبيق
