@@ -40,7 +40,7 @@ jobs:
         gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # تعديل الخصائص وحقن المانيفست وتوليد الأيقونة المخصصة (زون + وردة)
+    # تعديل الخصائص وحقن المانيفست وتوليد الأيقونة بأمان
     - name: Patch Manifest, Resources and Gradle Properties
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
@@ -61,56 +61,16 @@ jobs:
           sed -i 's|android:name="com.google.ar.core"|android:name="com.google.ar.core" tools:replace="android:value"|g' "$MANIFEST_PATH"
         fi
 
-        # 3. توليد الأيقونة المخصصة برسمة الوردة ونص ZONE
+        # 3. توليد الأيقونة المخصصة (ZONE + الوردة) مشفرة لحل أخطاء الـ XML في جيتهاب
         RES_DIR=$(find . -type d -name "res" | grep "src/main/res" -m 1)
         if [ -d "$RES_DIR" ]; then
           echo "Found res directory at: $RES_DIR"
           mkdir -p "$RES_DIR/mipmap-hdpi"
           
-          # إنشاء الأيقونة كملف رسومي Vector يحتوي على الوردة والنص
-          cat << 'EOF' > "$RES_DIR/mipmap-hdpi/ic_launcher.xml"
-<?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    
-    <!-- الخلفية: لون تركواز داكن فخم -->
-    <path
-        android:fillColor="#00695C"
-        android:pathData="M0,0h108v108h-108z"/>
-        
-    <!-- رسمة الوردة (البتلات باللون الأحمر الوردي) -->
-    <path
-        android:fillColor="#FF2A6D"
-        android:pathData="M54,22 C48,22 46,28 54,34 C62,28 60,22 54,22 Z M54,34 C48,34 42,38 48,44 C54,50 60,44 54,34 Z M54,34 C60,34 66,38 60,44 C54,50 48,44 54,34 Z M54,22 C60,22 66,26 60,32 C54,38 48,32 54,22 Z"/>
-        
-    <!-- قلب الوردة (باللون الأصفر) -->
-    <path
-        android:fillColor="#FFD600"
-        android:pathData="M54,34m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"/>
-        
-    <!-- غصن الوردة الصغير (باللون الأخضر) -->
-    <path
-        android:fillColor="#00E676"
-        android:pathData="M53,37h2v10h-2z"/>
-
-    <!-- نص كلمة ZONE في منتصف الأيقونة باللون الأبيض الثلجي -->
-    <!-- تم تمثيل الحروف بمسارات رسم هندسية دقيقة لتظهر على كل الهواتف -->
-    <group android:translateX="24" android:translateY="56">
-        <!-- حرف Z -->
-        <path android:fillColor="#FFFFFF" android:pathData="M0,0 h12 v2 l-10,10 h10 v2 h-12 v-2 l10,-10 h-10 z"/>
-        <!-- حرف O -->
-        <path android:fillColor="#FFFFFF" android:pathData="M16,0 h10 v14 h-10 z M18,2 h6 v10 h-6 z"/>
-        <!-- حرف N -->
-        <path android:fillColor="#FFFFFF" android:pathData="M30,0 h2 l8,11 v-11 h2 v14 h-2 l-8,-11 v-11 v11 h-2 z"/>
-        <!-- حرف E -->
-        <path android:fillColor="#FFFFFF" android:pathData="M46,0 h12 v2 h-10 v4 h8 v2 h-8 v4 h10 v2 h-12 z"/>
-    </group>
-</vector>
-EOF
-          echo "Custom ZONE + Flower icon generated successfully."
+          # فك تشفير النص وتوليد ملف ic_launcher.xml بشكل آمن 100% بدون اعتراض من جيتهاب
+          echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHZlY3RvciB4bWxuczphbmRyb2lkPSJodHRwOi8vc2NoZW1hcy5hbmRyb2lkLmNvbS9hcGsvcmVzL2FuZHJvaWQiCiAgICBhbmRyb2lkOndpZHRoPSIxMDhkcCIKICAgIGFuZHJvaWQ6aGVpZ2h0PSIxMDhkcCIKICAgIGFuZHJvaWQ6dmlld3BvcnRXaWR0aD0iMTA4IgogICAgYW5kcm9pZDp2aWV3cG9ydEhlaWdodD0iMTA4Ij4KICAgIDxwYXRoCiAgICAgICAgYW5kcm9pZDpmaWxsQ29sb3I9IiMwMDY5NUMiCiAgICAgICAgYW5kcm9pZDpwYXRoRGF0YT0iTTAsMGgxMDh2MTA4aC0xMDh6Ii8+CiAgICA8cGF0aAogICAgICAgIGFuZHJvaWQ6ZmlsbENvbG9yPSIjRkYyQTZEIgogICAgICAgIGFuZHJvaWQ6cGF0aERhdGE9Ik01NCwyMiBDNDgsMjIgNDYsMjggNTQsMzQgQzYyLDI4IDYwLDIyIDU0LDIyIFogTTU0LDM0IEM0OCwzNCA0MiwzOCA0OCw0NCBDNTQsNTAgNjAsNDQgNTQsMzQgWiBNNTQsMzQgQzYwLDM0IDY2LDM4IDYwLDQ0IEM1NCw1MCA0OCw0NCA1NCwzNCBaIE01NCwyMiBDNjAsMjIgNjYsMjYgNjAsMzIgQzU0LDM4IDQ4LDMyIDU0LDIyIFoiLz4KICAgIDxwYXRoCiAgICAgICAgYW5kcm9pZDpmaWxsQ29sb3I9IiNGRkQ2MDAiCiAgICAgICAgYW5kcm9pZDpwYXRoRGF0YT0iTTU0LDM0bS0zLDBhMywzIDAsMSAxLDYgMGEzLDMgMCwxIDEsLTYgMCIvPgogICAgPHBhdGgKICAgICAgICBhbmRyb2lkOmZpbGxDb2xvcj0iIzAwRTY3NiIKICAgICAgICBhbmRyb2lkOnBhdGhEYXRhPSJNNTMsMzdoMnYxMGgtMnoiLz4KICAgIDxncm91cCBhbmRyb2lkOnRyYW5zbGF0ZVg9IjI0IiBhbmRyb2lkOnRyYW5zbGF0ZVk9IjU2Ij4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTAsMCBoMTIgdjIgbC0xMCwxMCBoMTAgdjIgaC0xMiB2LTIgbDEwLC0xMCBoLTEwIHoiLz4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTE2LDAgaDEwIHYxNCBoLTEwIHogTTE4LDIgaDYgdjEwIGgtNiB6Ii8+CiAgICAgICAgPHBhdGggYW5kcm9pZDpmaWxsQ29sb3I9IiNGRkZGRkYiIGFuZHJvaWQ6cGF0aERhdGE9Ik0zMCwwIGgyIGw4LDExIHYtMTEgaDJ2MTQgaC0yIGwtOCwtMTEgdi0xMSB2MTEgaC0yIHoiLz4KICAgICAgICA8cGF0aCBhbmRyb2lkOmZpbGxDb2xvcj0iI0ZGRkZGRiIgYW5kcm9pZDpwYXRoRGF0YT0iTTQ2LDAgaDEyIHYyIGgtMTAgdjQgaDggdjIgaC04IHY0IGgxMCB2MiBoLTEyIHoiLz4KICAgIDwvZ3JvdXA+CjwvdmVjdG9yPg==" | base64 -d > "$RES_DIR/mipmap-hdpi/ic_launcher.xml"
+          
+          echo "Custom Base64 ZONE + Flower icon generated successfully."
         else
           echo "Warning: res directory not found!"
         fi
