@@ -40,49 +40,32 @@ jobs:
         gradle wrapper --gradle-version 8.7 --distribution-type all
         chmod +x gradlew
 
-    # تعديل ملفات الخصائص وحقن المانيفست بالبايثون لحل التعارض نهائياً
-    - name: Patch Manifest via Python and Gradle Properties
+    # تعديل الخصائص وحقن المانيفست بأوامر Bash نصية بسيطة لتفادي أخطاء الـ Import
+    - name: Patch Manifest and Gradle Properties
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
         cd "$PROJECT_ROOT"
         
-        # تفعيل خصائص أندرويد إكس والذاكرة
+        # تفعيل خصائص أندرويد إكس وإعدادات الذاكرة
         echo "android.useAndroidX=true" >> gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
         echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
 
-        # البحث عن ملف المانيفست وتعديله برمجياً بالبايثون لضمان الدقة
+        # تحديد ملف المانيفست وتعديله نصياً بشكل مباشر وقاطع
         MANIFEST_PATH=$(find . -name "AndroidManifest.xml" -print -quit)
         if [ -f "$MANIFEST_PATH" ]; then
           echo "Patching AndroidManifest.xml at: $MANIFEST_PATH"
-          python3 -c "
-import xml.etree.ElementTree as ET
-
-# تسجيل فضاءات الأسماء لتجنب تلف الملف
-ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
-ET.register_namespace('tools', 'http://schemas.android.com/tools')
-
-tree = ET.parse('$MANIFEST_PATH')
-root = tree.getroot()
-
-# إضافة فضاء أسماء tools إلى الجذر
-root.set('xmlns:tools', 'http://schemas.android.com/tools')
-
-# البحث عن عنصر com.google.ar.core واستهدافه مباشرة
-patched = False
-for meta in root.findall('.//meta-data'):
-    name = meta.get('{http://schemas.android.com/apk/res/android}name')
-    if name == 'com.google.ar.core':
-        meta.set('{http://schemas.android.com/tools}replace', 'android:value')
-        patched = True
-        print('Successfully added tools:replace to com.google.ar.core')
-
-if patched:
-    tree.write('$MANIFEST_PATH', encoding='utf-8', xml_declaration=True)
-else:
-    print('Warning: com.google.ar.core meta-data tag not found via parser!')
-"
+          
+          # 1. إضافة فضاء الأسماء tools داخل وسم manifest الرئيسي إذا لم يكن موجوداً
+          sed -i 's|<manifest|<manifest xmlns:tools="http://schemas.android.com/tools"|g' "$MANIFEST_PATH"
+          # تنظيف أي تكرار قد يحدث لـ xmlns:tools
+          sed -i 's|xmlns:tools="http://schemas.android.com/tools" xmlns:tools="http://schemas.android.com/tools"|xmlns:tools="http://schemas.android.com/tools"|g' "$MANIFEST_PATH"
+          
+          # 2. استبدال سطر الميتا داتا الخاص بالواقع المعزز وحقن خاصية التخطّي الإجبارية
+          sed -i 's|android:name="com.google.ar.core"|android:name="com.google.ar.core" tools:replace="android:value"|g' "$MANIFEST_PATH"
+          
+          echo "Manifest patching completed using sed."
         fi
 
     # بدء بناء التطبيق
@@ -93,7 +76,7 @@ else:
         cd "$GRADLE_DIR"
         ./gradlew assembleDebug --no-daemon
 
-    # رفع ملف الـ APK المستخرج
+    # رفع ملف الـ APK المستخرج جاهزاً للتحميل
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
