@@ -13,15 +13,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # إعداد الـ Java وإجبار النظام على اعتماد إعدادات التوافق
-    - name: Set up JDK 22
+    # استخدام إصدار JDK 17 كخيار برميجي مستقر جداً مع مكتبات 2024
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        distribution: 'oracle'
-        java-version: '22'
-        cache: 'gradle' # لتسريع البناء وتجنب تعارض الملفات المؤقتة
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
 
-    # توليد ملف الـ Wrapper الناقص
+    # توليد ملفات البيئة الناقصة
     - name: Generate Missing Gradle Wrapper
       run: |
         SETTINGS_PATH=$(find . -name "settings.gradle*" -print -quit)
@@ -40,16 +40,14 @@ jobs:
         gradle wrapper --gradle-version 8.7
         chmod +x gradlew
 
-    # بناء التطبيق مع إضافة أوامر التخطي (Options) لضمان عدم توقف البناء بسبب التحذيرات
-    - name: Build Debug APK
+    # تشغيل البناء مع إظهار تفاصيل الخطأ كاملة (stacktrace) لمعرفة المسبب فوراً
+    - name: Build Debug APK with Stacktrace
       run: |
         GRADLEW_PATH=$(find . -name gradlew -print -quit)
         GRADLE_DIR=$(dirname "$GRADLEW_PATH")
         cd "$GRADLE_DIR"
-        # خيارات إضافية لتخطي مشاكل الذاكرة والتعارضات الناتجة عن اختلاف الإصدارات
-        ./gradlew assembleDebug -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8" --no-daemon
+        ./gradlew assembleDebug --stacktrace -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8"
 
-    # رفع ملف الـ APK النهائي
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
