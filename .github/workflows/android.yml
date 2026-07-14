@@ -8,93 +8,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # إعداد الـ Java
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-        cache: 'gradle'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-    # توليد ملف الـ Wrapper بالنسخة المتوافقة 8.7
-    - name: Generate and Update Gradle Wrapper
-      run: |
-        SETTINGS_PATH=$(find . -name "settings.gradle*" -print -quit)
-        if [ -z "$SETTINGS_PATH" ]; then
-          APP_PATH=$(find . -name "app" -type d -print -quit)
-          if [ -z "$APP_PATH" ]; then
-            TARGET_DIR="."
-          else
-            TARGET_DIR=$(dirname "$APP_PATH")
-          fi
-        else
-          TARGET_DIR=$(dirname "$SETTINGS_PATH")
-        fi
-        
-        cd "$TARGET_DIR"
-        gradle wrapper --gradle-version 8.7 --distribution-type all
-        chmod +x gradlew
+      - name: Build with Gradle
+        run: |
+          # زيادة مساحة الذاكرة المخصصة لعملية البناء لتجنب توقف Gradle
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" > gradle.properties
+          
+          # إعطاء صلاحية التنفيذ لملف الـ gradlew
+          chmod +x gradlew
+          
+          # بناء نسخة الـ Debug وتخطي فحص الـ Lint لتقليل زمن البناء ومنع التعارضات
+          ./gradlew assembleDebug -Pandroid.useAndroidX=true -Pandroid.enableJetifier=true -x lint
 
-    # تعديل خصائص أندرويد وإصلاح تعارض الـ Manifest تلقائياً
-    - name: Patch Manifest and Gradle Properties
-      run: |
-        GRADLEW_PATH=$(find . -name gradlew -print -quit)
-        PROJECT_ROOT=$(dirname "$GRADLEW_PATH")
-        cd "$PROJECT_ROOT"
-        
-        # تفعيل خصائص أندرويد إكس والذاكرة
-        echo "android.useAndroidX=true" >> gradle.properties
-        echo "android.enableJetifier=true" >> gradle.properties
-        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
-
-        # البحث عن ملف المانيفست وتعديله برمجياً بدقة سطر بسطر
-        MANIFEST_PATH=$(find . -name "AndroidManifest.xml" -print -quit)
-        if [ -f "$MANIFEST_PATH" ]; then
-          echo "Patching AndroidManifest.xml at: $MANIFEST_PATH"
-          python3 -c "
-with open('$MANIFEST_PATH', 'r', encoding='utf-8') as f:
-    lines = f.readlines()
-
-new_lines = []
-manifest_patched = False
-
-for line in lines:
-    # 1. إضافة فضاء الأسماء tools إلى وسم manifest الرئيسي
-    if '<manifest' in line and 'xmlns:tools' not in line:
-        line = line.replace('<manifest', '<manifest xmlns:tools=\"http://schemas.android.com/tools\"')
-    
-    # 2. البحث عن سطر AR Core وحقن خاصية الـ replace بالداخل مباشرة
-    if 'com.google.ar.core' in line and 'tools:replace' not in line:
-        line = line.replace('android:name=\"com.google.ar.core\"', 'android:name=\"com.google.ar.core\" tools:replace=\"android:value\"')
-        manifest_patched = True
-        print('Successfully patched AR Core meta-data line.')
-        
-    new_lines.append(line)
-
-with open('$MANIFEST_PATH', 'w', encoding='utf-8') as f:
-    f.writelines(new_lines)
-
-if not manifest_patched:
-    print('Warning: Enhanced line-patcher could not modify the targeted line.')
-"
-        fi
-
-    # بدء بناء التطبيق
-    - name: Build Debug APK
-      run: |
-        GRADLEW_PATH=$(find . -name gradlew -print -quit)
-        GRADLE_DIR=$(dirname "$GRADLEW_PATH")
-        cd "$GRADLE_DIR"
-        ./gradlew assembleDebug --no-daemon
-
-    # رفع ملف الـ APK المستخرج
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: my-android-app-apk
-        path: "**/build/outputs/apk/debug/app-debug.apk"
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LandscapeDesignApp
+          path: app/build/outputs/apk/debug/app-debug.apk
